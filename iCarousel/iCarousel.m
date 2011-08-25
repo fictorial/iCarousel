@@ -401,6 +401,25 @@
             transform = CATransform3DRotate(transform, angle, 0.0f, 1.0f, 0.0f);
             return CATransform3DTranslate(transform, 0.0f, 0.0f, radius + 0.01f);
         }
+        case iCarouselTypeRollingPin:
+        {
+			NSInteger count = MIN(numberOfVisibleItems, numberOfItems + (shouldWrap? 0: numberOfPlaceholdersToShow));
+            
+			CGFloat arc = M_PI * 2.0f;
+            CGFloat radius = itemWidth / 2.0f / tanf(arc/2.0f/count);
+            CGFloat angle = offset / count * arc;
+            
+            if (type == iCarouselTypeInvertedCylinder)
+            {
+                view.layer.doubleSided = NO;
+                radius = -radius;
+                angle = -angle;
+            }
+            
+            transform = CATransform3DTranslate(transform, 0.0f, 0.0f, -radius);
+            transform = CATransform3DRotate(transform, angle, 1.0f, 0.0f, 0.0f);
+            return CATransform3DTranslate(transform, 0.0f, 0.0f, radius + 0.01f);
+        }
         case iCarouselTypeCoverFlow:
         case iCarouselTypeCoverFlow2:
         {
@@ -1399,12 +1418,12 @@ NSInteger compareViewDepth(id obj1, id obj2, void *context)
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gesture
 {
-	if ([gesture isKindOfClass:[UIPanGestureRecognizer class]])
-	{
-		//ignore vertical swipes
-		UIPanGestureRecognizer *panGesture = (UIPanGestureRecognizer *)gesture;
-		CGPoint translation = [panGesture translationInView:self];
-		return fabsf(translation.x) >= fabsf(translation.y);
+	if ([gesture isKindOfClass:[UIPanGestureRecognizer class]] && type != iCarouselTypeRollingPin) 
+    {
+        //ignore vertical swipes
+        UIPanGestureRecognizer *panGesture = (UIPanGestureRecognizer *)gesture;
+        CGPoint translation = [panGesture translationInView:self];
+        return fabsf(translation.x) >= fabsf(translation.y);
 	}
 	return YES;
 }
@@ -1433,7 +1452,7 @@ NSInteger compareViewDepth(id obj1, id obj2, void *context)
 				dragging = YES;
                 scrolling = NO;
                 decelerating = NO;
-                previousTranslation = [panGesture translationInView:self].x;
+                previousTranslation = (type == iCarouselTypeRollingPin) ? [panGesture translationInView:self].x : [panGesture translationInView:self].y;
 				if ([delegate respondsToSelector:@selector(carouselWillBeginDragging:)])
 				{
 					[delegate carouselWillBeginDragging:self];
@@ -1480,16 +1499,29 @@ NSInteger compareViewDepth(id obj1, id obj2, void *context)
             }
             default:
             {
-                CGFloat translation = [panGesture translationInView:self].x - previousTranslation;
 				CGFloat factor = 1.0f;
 				if (!shouldWrap && bounces)
 				{
 					factor = 1.0f - fminf(fabsf(scrollOffset - [self clampedOffset:scrollOffset]) / itemWidth, bounceDistance) / bounceDistance;
 				}
 				
-                previousTranslation = [panGesture translationInView:self].x;
-                startVelocity = -[panGesture velocityInView:self].x * factor * scrollSpeed;
-                scrollOffset -= translation * factor * offsetMultiplier;
+                CGFloat translation;
+                
+                if (type == iCarouselTypeRollingPin) 
+                {
+                    translation = [panGesture translationInView:self].y - previousTranslation;
+                    previousTranslation = [panGesture translationInView:self].y;
+                    startVelocity = [panGesture velocityInView:self].y * factor * scrollSpeed;
+                    scrollOffset += translation * factor * offsetMultiplier;
+                }
+                else
+                {
+                    translation = [panGesture translationInView:self].x - previousTranslation;
+                    previousTranslation = [panGesture translationInView:self].x;
+                    startVelocity = -[panGesture velocityInView:self].x * factor * scrollSpeed;
+                    scrollOffset -= translation * factor * offsetMultiplier;
+                }
+                
                 [self didScroll];
             }
         }

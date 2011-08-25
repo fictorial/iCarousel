@@ -51,6 +51,7 @@ typedef enum
     iCarouselTypeInvertedCylinder,
     iCarouselTypeCoverFlow,
     iCarouselTypeCoverFlow2,
+    iCarouselTypeRollingPin,
     iCarouselTypeCustom
 }
 iCarouselType;
