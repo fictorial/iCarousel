@@ -1,3 +1,7 @@
+( This fork adds a 'rolling pin' effect )
+
+![](http://i.imgur.com/zRllj.gif)
+
 Purpose
 --------------
 
